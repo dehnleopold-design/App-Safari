@@ -1,5 +1,5 @@
 // Netzwerk zuerst, sonst Cache – damit die App auch offline startet.
-const CACHE = 'safari-v2';
+const CACHE = 'safari-v3';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
