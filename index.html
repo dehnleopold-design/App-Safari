@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Safari">
+<meta name="theme-color" content="#1e1e1e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<title>Safari</title>
+<style>
+  :root {
+    --bar: #1e1e1e;
+    --tabbar: #141414;
+    --tab-active: #2b2b2b;
+    --tab-line: #2e2e2e;
+    --pill: #3a3a3c;
+    --text: #f2f2f2;
+    --text-dim: #c7c7c7;
+    --icon: #0a84ff;
+    --icon-off: #5a5a5e;
+    --page: #000;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bar); color: var(--text); font-family: var(--font);
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    overscroll-behavior: none;
+  }
+  button { all: unset; display: inline-flex; align-items: center; justify-content: center; cursor: default; }
+  svg { display: block; }
+
+  #app { position: fixed; inset: 0; display: flex; flex-direction: column; }
+
+  /* ---------- iPad: Toolbar ---------- */
+  .top { background: var(--bar); padding-top: env(safe-area-inset-top); flex: none; }
+  .toolbar {
+    height: 52px; display: flex; align-items: center; gap: 6px;
+    padding: 0 calc(14px + env(safe-area-inset-right)) 0 calc(14px + env(safe-area-inset-left));
+  }
+  .tb-group { display: flex; align-items: center; gap: 18px; flex: 1 1 0; }
+  .tb-group.right { justify-content: flex-end; gap: 30px; }
+  .tb-btn { color: var(--icon); width: 34px; height: 34px; }
+  .tb-btn.off { color: var(--icon-off); }
+
+  .pill {
+    position: relative; flex: 0 1 560px; min-width: 0; height: 36px; border-radius: 12px;
+    background: var(--pill); display: flex; align-items: center; padding: 0 8px; overflow: hidden;
+  }
+  .pill .lead, .pill .trail { color: var(--text); opacity: .9; width: 30px; height: 30px; flex: none; }
+  .pill .trail-wrap { display: flex; gap: 2px; flex: none; }
+  .domain {
+    flex: 1; min-width: 0; text-align: center; font-size: 17px; font-weight: 400; letter-spacing: -.2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px;
+  }
+  .domain.placeholder { color: #8e8e93; }
+  .pill input {
+    flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent;
+    color: var(--text); font: 17px var(--font); padding: 0 6px; -webkit-user-select: text; user-select: text;
+  }
+  .pill input::placeholder { color: #8e8e93; }
+  .progress {
+    position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--icon);
+    opacity: 0; transition: width .25s ease-out, opacity .3s;
+  }
+
+  /* ---------- iPad: Tab bar ---------- */
+  .tabbar {
+    height: 34px; display: flex; background: var(--tabbar);
+    padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  }
+  .tab {
+    flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px;
+    color: var(--text-dim); font-size: 14px; padding: 0 12px; border-left: 1px solid var(--tab-line);
+  }
+  .tab:first-child { border-left: 0; }
+  .tab.pinned { flex: 0 0 44px; padding: 0; }
+  .tab.active { background: var(--tab-active); color: var(--text); font-weight: 600; }
+  .tab .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fav {
+    width: 18px; height: 18px; border-radius: 4px; flex: none; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+  }
+  .tab .close { width: 18px; height: 18px; border-radius: 4px; background: #555; color: #1e1e1e; flex: none; }
+
+  /* ---------- Page ---------- */
+  .page { position: relative; flex: 1; background: var(--page); overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+  .page img { display: block; width: 100%; height: auto; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  .page img.show { opacity: 1; }
+  .page.cover img { height: 100%; object-fit: cover; object-position: top center; }
+  .page.contain img { height: 100%; object-fit: contain; }
+  .start {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #636366; font-size: 15px; text-align: center; padding: 24px;
+  }
+
+  /* ---------- iPhone layout (Adresszeile unten) ---------- */
+  .bottom { display: none; }
+  @media (max-width: 600px) {
+    .toolbar, .tabbar { display: none; }
+    .top { background: var(--page); }
+    .bottom {
+      display: flex; align-items: center; gap: 10px; flex: none;
+      padding: 8px 14px calc(8px + env(safe-area-inset-bottom));
+      background: var(--bar);
+    }
+    .bottom .round {
+      width: 44px; height: 44px; border-radius: 22px; background: var(--pill); color: var(--text); flex: none;
+    }
+    .bottom .pill { flex: 1; height: 44px; border-radius: 22px; }
+  }
+
+  /* ---------- Geheimes Menü ---------- */
+  .sheet-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center;
+    z-index: 50; padding: 20px;
+  }
+  .sheet-bg.open { display: flex; }
+  .sheet {
+    width: 100%; max-width: 420px; background: #1c1c1e; border-radius: 16px; padding: 20px; color: #fff;
+    font-size: 15px; -webkit-user-select: none;
+  }
+  .sheet h2 { margin: 0 0 4px; font-size: 19px; }
+  .sheet p { margin: 0 0 16px; color: #98989d; font-size: 13px; line-height: 1.4; }
+  .sheet .preview {
+    width: 100%; height: 160px; border-radius: 10px; background: #2c2c2e center/cover no-repeat; margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: center; color: #8e8e93; font-size: 13px;
+  }
+  .sheet label.row, .sheet .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .sheet select, .sheet input[type=text] {
+    background: #2c2c2e; color: #fff; border: 0; border-radius: 8px; padding: 8px 10px; font: 15px var(--font);
+    -webkit-user-select: text; user-select: text; min-width: 0;
+  }
+  .sheet input[type=text] { flex: 1; }
+  .sheet .btn {
+    display: flex; width: 100%; padding: 12px; border-radius: 10px; background: #0a84ff; color: #fff;
+    font-weight: 600; justify-content: center; margin-top: 8px; cursor: pointer;
+  }
+  .sheet .btn.grey { background: #3a3a3c; }
+  .sheet .btn.red { background: transparent; color: #ff453a; }
+  #file { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <!-- iPad-Toolbar -->
+    <div class="toolbar">
+      <div class="tb-group">
+        <button class="tb-btn" aria-label="Seitenleiste">
+          <svg width="30" height="24" viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="26" height="20" rx="4"/><line x1="11" y1="2.5" x2="11" y2="21.5"/><line x1="5" y1="7" x2="8" y2="7" stroke-linecap="round"/><line x1="5" y1="11" x2="8" y2="11" stroke-linecap="round"/></svg>
+        </button>
+        <button class="tb-btn" id="backBtn" aria-label="Zurück">
+          <svg width="14" height="24" viewBox="0 0 14 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 2.5 2.5 12l9 9.5"/></svg>
+        </button>
+        <button class="tb-btn off" aria-label="Vorwärts">
+          <svg width="14" height="24" viewBox="0 0 14 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2.5 11.5 12l-9 9.5"/></svg>
+        </button>
+      </div>
+
+      <div class="pill" data-pill>
+        <button class="lead" aria-label="Seitenmenü">
+          <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="18" height="18" rx="4"/><line x1="6" y1="11.5" x2="24" y2="11.5"/><line x1="10" y1="16" x2="20" y2="16" stroke-linecap="round"/><line x1="10" y1="19.5" x2="17" y2="19.5" stroke-linecap="round"/></svg>
+        </button>
+        <div class="domain" data-domain></div>
+        <div class="trail-wrap">
+          <button class="trail" aria-label="Erweiterungen">
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="5" y="8" width="17" height="14" rx="3"/><path d="M18 8v-1.5a2 2 0 0 1 2-2h3.5a2 2 0 0 1 2 2V10a2 2 0 0 1-2 2H22"/><line x1="9" y1="15" x2="15" y2="15" stroke-linecap="round"/></svg>
+          </button>
+          <button class="trail" data-reload aria-label="Neu laden">
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 15a7.5 7.5 0 1 1-2.6-5.7"/><path d="M20.5 5.2v4.6h-4.6"/></svg>
+          </button>
+        </div>
+        <div class="progress" data-progress></div>
+      </div>
+
+      <div class="tb-group right">
+        <button class="tb-btn" aria-label="Teilen">
+          <svg width="24" height="30" viewBox="0 0 24 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11H5.5A2.5 2.5 0 0 0 3 13.5v11A2.5 2.5 0 0 0 5.5 27h13a2.5 2.5 0 0 0 2.5-2.5v-11A2.5 2.5 0 0 0 18.5 11H16"/><path d="M12 19V2.5"/><path d="M7.5 7 12 2.5 16.5 7"/></svg>
+        </button>
+        <button class="tb-btn" aria-label="Neuer Tab">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 2.5v19M2.5 12h19"/></svg>
+        </button>
+        <button class="tb-btn" data-secret aria-label="Tabs">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="8" width="17.5" height="17.5" rx="3.5"/><path d="M8 4.8V5a2.5 2.5 0 0 1 2.5-2.5H23A2.5 2.5 0 0 1 25.5 5v12.5A2.5 2.5 0 0 1 23 20h-.2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- iPad-Tableiste -->
+    <div class="tabbar" id="tabbar"></div>
+  </div>
+
+  <div class="page" id="page">
+    <img id="shot" alt="">
+    <div class="start" id="start">Tippe oben auf die Adresszeile</div>
+  </div>
+
+  <!-- iPhone-Leiste unten -->
+  <div class="bottom">
+    <button class="round" aria-label="Zurück">
+      <svg width="14" height="22" viewBox="0 0 14 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 2.5 2.5 12l9 9.5"/></svg>
+    </button>
+    <div class="pill" data-pill>
+      <button class="lead" aria-label="Seitenmenü">
+        <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="18" height="18" rx="4"/><line x1="6" y1="11.5" x2="24" y2="11.5"/><line x1="10" y1="16" x2="20" y2="16" stroke-linecap="round"/><line x1="10" y1="19.5" x2="17" y2="19.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="domain" data-domain></div>
+      <div class="trail-wrap">
+        <button class="trail" data-reload aria-label="Neu laden">
+          <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 15a7.5 7.5 0 1 1-2.6-5.7"/><path d="M20.5 5.2v4.6h-4.6"/></svg>
+        </button>
+      </div>
+      <div class="progress" data-progress></div>
+    </div>
+    <button class="round" data-secret aria-label="Mehr">
+      <svg width="24" height="6" viewBox="0 0 24 6" fill="currentColor"><circle cx="3" cy="3" r="2.4"/><circle cx="12" cy="3" r="2.4"/><circle cx="21" cy="3" r="2.4"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- Geheimes Menü: 3× schnell auf das Tabs-Symbol (iPad) bzw. "…" (iPhone) tippen -->
+<div class="sheet-bg" id="sheetBg">
+  <div class="sheet">
+    <h2>Geheimes Menü</h2>
+    <p>Dieses Bild erscheint bei jeder eingegebenen Adresse.</p>
+    <div class="preview" id="preview">Kein Bild gewählt</div>
+    <button class="btn" id="pick">Bild auswählen</button>
+    <input type="file" id="file" accept="image/*">
+    <div style="height:14px"></div>
+    <label class="row">Darstellung
+      <select id="fit">
+        <option value="width">Volle Breite, scrollbar (wie Webseite)</option>
+        <option value="cover">Bildschirm füllen</option>
+        <option value="contain">Ganz sichtbar</option>
+      </select>
+    </label>
+    <label class="row">Ladebalken
+      <select id="delay">
+        <option value="0">Aus</option>
+        <option value="600">Kurz</option>
+        <option value="1200">Normal</option>
+        <option value="2500">Lang</option>
+      </select>
+    </label>
+    <label class="row">Tabs
+      <input type="text" id="tabsInput" placeholder="Google, YouTube, Wikipedia">
+    </label>
+    <button class="btn grey" id="close">Fertig</button>
+    <button class="btn red" id="clear">Bild entfernen</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Speicher (IndexedDB für das Bild, localStorage für Einstellungen) ----------
+  const DB = 'safari-prank', STORE = 'kv';
+  function db() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(STORE);
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function idbGet(k) {
+    try { const d = await db(); return await new Promise(res => { const q = d.transaction(STORE).objectStore(STORE).get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); }
+    catch { return null; }
+  }
+  async function idbSet(k, v) {
+    try { const d = await db(); await new Promise(res => { const t = d.transaction(STORE, 'readwrite'); t.objectStore(STORE).put(v, k); t.oncomplete = res; t.onerror = res; }); }
+    catch {}
+  }
+  const ls = {
+    get(k, f) { try { const v = localStorage.getItem(k); return v === null ? f : v; } catch { return f; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} }
+  };
+
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const page = $('#page'), shot = $('#shot'), start = $('#start');
+  let imgUrl = null;
+  let domain = ls.get('domain', '');
+
+  // ---------- Tabs ----------
+  const COLORS = ['#4285f4', '#ff0033', '#636366', '#e1306c', '#1db954', '#ff9500', '#5856d6'];
+  function renderTabs() {
+    const names = ls.get('tabs', 'Google, YouTube, Wikipedia, Instagram').split(',').map(s => s.trim()).filter(Boolean);
+    const bar = $('#tabbar');
+    bar.innerHTML = '<div class="tab pinned"><div class="fav" style="background:#34c759">t</div></div>';
+    names.forEach((n, i) => {
+      const t = document.createElement('div');
+      t.className = 'tab';
+      t.innerHTML = `<div class="fav" style="background:${COLORS[i % COLORS.length]}"></div><span class="t"></span>`;
+      t.querySelector('.fav').textContent = n[0].toUpperCase();
+      t.querySelector('.t').textContent = n;
+      bar.appendChild(t);
+    });
+    const a = document.createElement('div');
+    a.className = 'tab active';
+    a.innerHTML = '<div class="close"><svg width="18" height="18" viewBox="0 0 18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5.5 5.5l7 7M12.5 5.5l-7 7"/></svg></div><span class="t" id="activeTitle"></span>';
+    bar.appendChild(a);
+    $('#activeTitle').textContent = domain || 'Startseite';
+  }
+
+  // ---------- Adresszeile ----------
+  function cleanDomain(raw) {
+    let s = raw.trim().replace(/^[a-z]+:\/\//i, '').replace(/^www\./i, '');
+    s = s.split(/[/?#]/)[0];
+    return s.toLowerCase();
+  }
+  function showDomain() {
+    $$('[data-domain]').forEach(el => {
+      el.textContent = domain || 'Suchbegriff oder Adresse eingeben';
+      el.classList.toggle('placeholder', !domain);
+    });
+    const t = $('#activeTitle'); if (t) t.textContent = domain || 'Startseite';
+    document.title = domain || 'Safari';
+  }
+
+  function startEdit(pill) {
+    if (pill.querySelector('input')) return;
+    const d = pill.querySelector('[data-domain]');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.inputMode = 'url';
+    input.autocapitalize = 'off';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.enterKeyHint = 'go';
+    input.placeholder = 'Suchbegriff oder Adresse eingeben';
+    input.value = domain;
+    d.style.display = 'none';
+    pill.insertBefore(input, d);
+    input.focus();
+    input.select();
+    let done = false;
+    const finish = go => {
+      if (done) return; done = true;
+      const v = input.value;
+      input.remove();
+      d.style.display = '';
+      if (go && v.trim()) load(cleanDomain(v));
+    };
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); finish(true); input.blur(); } if (e.key === 'Escape') finish(false); });
+    input.addEventListener('blur', () => finish(false));
+  }
+  $$('[data-pill]').forEach(p => p.addEventListener('click', e => {
+    if (e.target.closest('[data-reload]')) return;
+    startEdit(p);
+  }));
+  $$('[data-reload]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); if (domain) load(domain); }));
+
+  // ---------- "Laden" ----------
+  let timers = [];
+  function load(d) {
+    domain = d;
+    ls.set('domain', d);
+    showDomain();
+    timers.forEach(clearTimeout); timers = [];
+    shot.classList.remove('show');
+    page.scrollTop = 0;
+    const delay = +ls.get('delay', '1200');
+    const bars = $$('[data-progress]');
+    if (!delay) { bars.forEach(b => { b.style.opacity = 0; b.style.width = 0; }); reveal(); return; }
+    bars.forEach(b => { b.style.transition = 'none'; b.style.width = '0'; b.style.opacity = 1; });
+    requestAnimationFrame(() => {
+      bars.forEach(b => { b.style.transition = ''; b.style.width = '25%'; });
+      timers.push(setTimeout(() => bars.forEach(b => b.style.width = '70%'), delay * .4));
+      timers.push(setTimeout(() => { bars.forEach(b => b.style.width = '100%'); reveal(); }, delay));
+      timers.push(setTimeout(() => bars.forEach(b => b.style.opacity = 0), delay + 300));
+    });
+  }
+  function reveal() {
+    if (imgUrl) { start.style.display = 'none'; shot.classList.add('show'); }
+    else { start.style.display = ''; start.textContent = 'Noch kein Bild gewählt'; }
+  }
+
+  // ---------- Bild & Darstellung ----------
+  function applyFit() {
+    page.classList.remove('cover', 'contain');
+    const f = ls.get('fit', 'width');
+    if (f !== 'width') page.classList.add(f);
+  }
+  function setImage(blob) {
+    if (imgUrl) URL.revokeObjectURL(imgUrl);
+    imgUrl = blob ? URL.createObjectURL(blob) : null;
+    shot.src = imgUrl || '';
+    const pv = $('#preview');
+    pv.style.backgroundImage = imgUrl ? `url("${imgUrl}")` : '';
+    pv.textContent = imgUrl ? '' : 'Kein Bild gewählt';
+  }
+
+  // ---------- Geheimer Zugang: 3× schnell tippen ----------
+  const sheet = $('#sheetBg');
+  $$('[data-secret]').forEach(btn => {
+    let n = 0, t;
+    btn.addEventListener('click', () => {
+      n++; clearTimeout(t);
+      t = setTimeout(() => n = 0, 600);
+      if (n >= 3) { n = 0; openSheet(); }
+    });
+  });
+  function openSheet() {
+    $('#fit').value = ls.get('fit', 'width');
+    $('#delay').value = ls.get('delay', '1200');
+    $('#tabsInput').value = ls.get('tabs', 'Google, YouTube, Wikipedia, Instagram');
+    sheet.classList.add('open');
+  }
+  $('#pick').onclick = () => $('#file').click();
+  $('#file').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    await idbSet('image', f);
+    setImage(f);
+    if (domain) reveal();
+    e.target.value = '';
+  };
+  $('#fit').onchange = e => { ls.set('fit', e.target.value); applyFit(); };
+  $('#delay').onchange = e => ls.set('delay', e.target.value);
+  $('#tabsInput').onchange = e => { ls.set('tabs', e.target.value); renderTabs(); };
+  $('#close').onclick = () => sheet.classList.remove('open');
+  sheet.addEventListener('click', e => { if (e.target === sheet) sheet.classList.remove('open'); });
+  $('#clear').onclick = async () => { await idbSet('image', null); setImage(null); shot.classList.remove('show'); start.style.display = ''; };
+
+  // ---------- Start ----------
+  renderTabs();
+  showDomain();
+  applyFit();
+  idbGet('image').then(b => {
+    if (b) setImage(b);
+    if (domain && b) { start.style.display = 'none'; shot.classList.add('show'); }
+  });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
